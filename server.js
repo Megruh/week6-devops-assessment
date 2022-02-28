@@ -6,21 +6,29 @@ const {shuffleArray} = require('./utils')
 
 app.use(express.json())
 
-
-app.get('/', function(req, res){
-    res.sendFile(path.join(__dirname, './public/index.html'))
+var Rollbar = require('rollbar')
+var rollbar = new Rollbar({
+  accessToken: '7308a060f91e474d975c93365585cf96',
+  captureUncaught: true,
+  captureUnhandledRejections: true,
 })
 
-app.get('/css', (req, res) => {
-    res.sendFile(path.join(__dirname, './public/styles.css'))
-})
+// record a generic message and send it to Rollbar
+rollbar.log('Hello world!')
 
-app.use(express.static(path.join(__dirname, '../public')))
+
+app.use(express.static(path.join(__dirname, 'public')))
+
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public/index.html'))
+    rollbar.info('html file served successfully')
+})
 
 app.get('/api/robots', (req, res) => {
     try {
         res.status(200).send(botsArr)
     } catch (error) {
+        rollbar.critical('could not find botsArr')
         console.log('ERROR GETTING BOTS', error)
         res.sendStatus(400)
     }
@@ -33,6 +41,7 @@ app.get('/api/robots/five', (req, res) => {
         let compDuo = shuffled.slice(6, 8)
         res.status(200).send({choices, compDuo})
     } catch (error) {
+        rollbar.error('Could not get five bots')
         console.log('ERROR GETTING FIVE BOTS', error)
         res.sendStatus(400)
     }
@@ -59,12 +68,15 @@ app.post('/api/duel', (req, res) => {
         if (compHealthAfterAttack > playerHealthAfterAttack) {
             playerRecord.losses++
             res.status(200).send('You lost!')
+            rollbar.debug('the computer won')
         } else {
             playerRecord.losses++
+            rollbar.info('Player won')
             res.status(200).send('You won!')
         }
     } catch (error) {
         console.log('ERROR DUELING', error)
+        rollbar.warning('something went wrong with the duel')
         res.sendStatus(400)
     }
 })
